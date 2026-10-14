@@ -1,0 +1,37 @@
+{
+  "source": "../score.mp3",
+  "method": "4-second equal-power head/tail overlap; PCM avoids codec padding",
+  "musical_review": "Provisional excerpts; listening approval pending",
+  "loops": [
+    {
+      "name": "quiet",
+      "source_start_seconds": 5,
+      "source_duration_seconds": 32,
+      "loop_duration_seconds": 28.0,
+      "overlap_seconds": 4,
+      "peak": 0.5048515200614929,
+      "seam_step": 0.0029143691062927246,
+      "rms": 0.10753685007706591
+    },
+    {
+      "name": "stones",
+      "source_start_seconds": 38,
+      "source_duration_seconds": 32,
+      "loop_duration_seconds": 28.0,
+      "overlap_seconds": 4,
+      "peak": 0.539272665977478,
+      "seam_step": 0.0044802036136388605,
+      "rms": 0.09874568834170953
+    },
+    {
+      "name": "vault",
+      "source_start_seconds": 72,
+      "source_duration_seconds": 32,
+      "loop_duration_seconds": 28.0,
+      "overlap_seconds": 4,
+      "peak": 0.5306479930877686,
+      "seam_step": 0.010992709547281262,
+      "rms": 0.09826040636843293
+    }
+  ]
+}

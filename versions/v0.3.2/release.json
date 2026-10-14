@@ -1,0 +1,15 @@
+{
+  "version": "0.3.2",
+  "fallback": "../v0.3.1/",
+  "older_fallback": "../../",
+  "changes": [
+    "continuous real-alpha stone transitions",
+    "slow fore/aft double-sided mountain",
+    "operation cues only",
+    "clean desktop preview and fullscreen request",
+    "separate VR and persistent passthrough MR"
+  ],
+  "headset_verified": false,
+  "music_loops_ready": true,
+  "music_artist_reviewed": false
+}
