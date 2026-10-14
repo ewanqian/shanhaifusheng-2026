@@ -1,0 +1,13 @@
+{
+  "version": "0.3.0",
+  "fallback": "../../",
+  "changes": [
+    "12 stones with depth, no forced ring",
+    "stationary inverted mountain vault",
+    "effective roughness remapping",
+    "90-second sequence with hold",
+    "optional MR entry, VR fallback"
+  ],
+  "headset_verified": false,
+  "music_loops_ready": false
+}

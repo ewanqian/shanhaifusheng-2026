@@ -1,5 +1,10 @@
 # 山海浮生 2026 · 炁 QI
 
+## 鐗堟湰鍏ュ彛锛堟棫鐗堜繚鐣欙級
+
+- **[鏂扮増 0.3.0锛氱旱娣辩煶鍦?+ 澶撮《鎮北](https://ewanqian.github.io/shanhaifusheng-2026/versions/v0.3.0/)** 鈥?90 绉掋€佸彲鍋滅暀锛汳R 涓哄彲閫夋祴璇曡矾寰勩€?- **[Fallback 0.2.0锛氫笂涓€鐗圿(https://ewanqian.github.io/shanhaifusheng-2026/?v=0.2.0)** 鈥?鍘熺綉鍧€銆佸師妯″瀷銆佸師鑴氭湰淇濇寔涓嶅彉銆?- [绌洪棿浜у搧鐮旂┒涓庢墽琛岄『搴廬(./docs/SPATIAL_PRODUCT_REVIEW.md)
+
+鏈鍙柊澧?`versions/v0.3.0/`锛屾病鏈夋浛鎹㈡牴鐩綍鐨勬棫鐗堣繍琛屾枃浠躲€傛柊鐗堝皻寰?Quest 鐪熸満澶嶆牳锛岄煶涔?loop 鍓緫灏氭湭瀹屾垚銆?
 ## 快速入口
 
 记住这个仓库即可；以下链接可以直接打开。
