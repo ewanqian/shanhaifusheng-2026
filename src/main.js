@@ -1,3 +1,4 @@
+import {phaseAt, LENGTH, XR_HERO, pinchEdge} from './sequence.js';
 import {gsap} from 'gsap';
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
@@ -6,47 +7,215 @@ import {VRButton} from 'three/addons/webxr/VRButton.js';
 const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);renderer.xr.enabled=true;renderer.xr.setReferenceSpaceType('local-floor');renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.35;document.body.prepend(renderer.domElement);
 document.body.append(VRButton.createButton(renderer,{optionalFeatures:['hand-tracking']}));
 const scene=new THREE.Scene();scene.background=new THREE.Color('#fff');scene.fog=new THREE.FogExp2('#fff',.06);
-const camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.05,250);const dolly=new THREE.Group();scene.add(dolly);dolly.add(camera);const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;
-scene.add(new THREE.HemisphereLight(0xffffff,0x292929,.35));const key=new THREE.DirectionalLight(0xffffff,1.5);key.position.set(-55,45,35);scene.add(key);const fill=new THREE.DirectionalLight(0xffffff,.35);fill.position.set(38,38,-25);scene.add(fill);
+const camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.05,250);const dolly=new THREE.Group();scene.add(dolly);dolly.add(camera);const experience=new THREE.Group();scene.add(experience);const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;
+scene.add(new THREE.HemisphereLight(0xffffff,0x505050,.85));const key=new THREE.DirectionalLight(0xffffff,3.0);key.position.set(-55,45,35);scene.add(key);const fill=new THREE.DirectionalLight(0xffffff,.35);fill.position.set(38,38,-25);scene.add(fill);
 // HDR studio cards produce broad mineral highlights without a chrome-white environment.
-const studio=new THREE.Scene();studio.background=new THREE.Color(.025,.025,.025);const cardmat=new THREE.MeshBasicMaterial({color:new THREE.Color(5,5,5),side:THREE.DoubleSide});for(const [p,s] of [[[0,12,0],[24,4]], [[-10,6,5],[7,10]], [[12,8,-6],[4,12]]]){const m=new THREE.Mesh(new THREE.PlaneGeometry(...s),cardmat);m.position.set(...p);m.lookAt(0,0,0);studio.add(m);}const pmrem=new THREE.PMREMGenerator(renderer);scene.environment=pmrem.fromScene(studio,.08).texture;scene.environmentIntensity=.15;pmrem.dispose();
+const studio=new THREE.Scene();studio.background=new THREE.Color(.025,.025,.025);const cardmat=new THREE.MeshBasicMaterial({color:new THREE.Color(5,5,5),side:THREE.DoubleSide});for(const [p,s] of [[[0,12,0],[24,4]], [[-10,6,5],[7,10]], [[12,8,-6],[4,12]]]){const m=new THREE.Mesh(new THREE.PlaneGeometry(...s),cardmat);m.position.set(...p);m.lookAt(0,0,0);studio.add(m);}const pmrem=new THREE.PMREMGenerator(renderer);scene.environment=pmrem.fromScene(studio,.08).texture;scene.environmentIntensity=.8;pmrem.dispose();
 const loader=new GLTFLoader();const roots={};let active='mountain';let busy=false;
-function dress(root){root.traverse(o=>{if(!o.isMesh)return;for(const m of Array.isArray(o.material)?o.material:[o.material]){m.roughness=.68;m.metalness=0;m.envMapIntensity=.2;m.normalScale?.setScalar(.45);m.side=THREE.DoubleSide;m.userData.qiWhite={value:0};m.userData.qiFade={value:1};m.onBeforeCompile=s=>{s.uniforms.qiWhite=m.userData.qiWhite;s.uniforms.qiFade=m.userData.qiFade;s.vertexShader=s.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 shWorld;').replace('#include <worldpos_vertex>','#include <worldpos_vertex>\nshWorld=(modelMatrix*vec4(transformed,1.0)).xyz;');s.fragmentShader=s.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 shWorld;uniform float qiWhite;uniform float qiFade;').replace('#include <color_fragment>','#include <color_fragment>\ndiffuseColor.rgb=mix(diffuseColor.rgb,vec3(.9),qiWhite);').replace('#include <fog_fragment>','#include <fog_fragment>\n#ifdef USE_FOG\nfloat groundHaze=(1.0-exp(-length(shWorld-cameraPosition)*fogDensity*.3))*exp(-max(shWorld.y,0.0)*.08);gl_FragColor.rgb=mix(gl_FragColor.rgb,fogColor,clamp(groundHaze,0.0,.5));\n#endif\ngl_FragColor.rgb=mix(vec3(1.),gl_FragColor.rgb,qiFade);');};m.customProgramCacheKey=()=> 'qi-continuous-v4';}});}
-let ready=false;let apron;const clock=new THREE.Clock();let chapter=0,elapsed=0,playing=false,total=0,hero;let stones=[],transition;const durations=[0,18,24,22,28,18];const motion={birth:0,ring:0,white:0,land:0,hero:1,title:0,lower:0};const chapters=[['00 / 在场','山海未生，炁已流动','一次约 110 秒的空间序章。点击开始，回应一石的呼吸。'],['01 / 先天一炁','一石，一息','靠近中央的石头。点击、捏合，或轻触，万象开始回应。'],['02 / 分形','一炁生万物','一、三、七、十八。它们并非突然诞生，只是从雾中显现。'],['03 / 相生','分形而不减其本','形体缓缓汇聚，万象互相回应。同源而不同形。'],['04 / 山海','生天生地','让视线停留，让山海从远雾中展开。'],['05 / 归一','合形而不增其源','万象归于一石。留下一次呼吸，和再次进入的余韵。']];
-const score=new Audio('./assets/score.mp3');score.preload='none';score.volume=.3;const sound=document.createElement('button');sound.textContent='声音：开';document.querySelector('nav').append(sound);sound.onclick=()=>{score.muted=!score.muted;sound.textContent=score.muted?'声音：关':'声音：开';};
-const floor=new THREE.Mesh(new THREE.PlaneGeometry(500,500),new THREE.ShaderMaterial({vertexShader:'varying vec3 p;void main(){p=(modelMatrix*vec4(position,1.)).xyz;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',fragmentShader:'varying vec3 p;void main(){float a=exp(-length(p.xz)*.035);gl_FragColor=vec4(vec3(1.-.065*a),1.);}'}));floor.rotation.x=-Math.PI/2;floor.position.y=-.55;scene.add(floor);
-function labelTexture(text,sub){const c=document.createElement('canvas');c.width=2048;c.height=512;const x=c.getContext('2d');x.fillStyle='#202020';x.textAlign='center';x.font='120px serif';x.fillText(text,1024,240);x.font='28px Arial';x.fillText(sub,1024,345);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;}
-const title=new THREE.Mesh(new THREE.PlaneGeometry(4.5,1.125),new THREE.MeshBasicMaterial({map:labelTexture('山海浮生 III · 炁','SHANHAI FUSHENG / SPATIAL PRELUDE'),transparent:true,depthWrite:false,opacity:0,side:THREE.DoubleSide}));title.position.set(0,3.5,-5);scene.add(title);
-const cue=new THREE.Mesh(new THREE.PlaneGeometry(2.4,.6),new THREE.MeshBasicMaterial({map:labelTexture('触碰 · 生万象','TOUCH / PINCH TO CONTINUE'),transparent:true,depthWrite:false}));cue.position.set(0,.65,-2);scene.add(cue);
-function resetView(){if(renderer.xr.isPresenting)return;camera.position.set(0,1.65,8);controls.target.set(0,2,-3);controls.update();}controls.maxDistance=20;controls.minDistance=6;controls.maxPolarAngle=Math.PI*.51;resetView();
-function caption(n){const [a,b,c]=chapters[n];const els=['#chapter','#name','#line'];gsap.killTweensOf(els);gsap.timeline().to(els,{opacity:0,y:-8,duration:.45,stagger:.06}).call(()=>{document.querySelector('#chapter').textContent=a;document.querySelector('#name').textContent=b;document.querySelector('#line').textContent=c;if(cue){cue.material.map?.dispose();cue.material.map=labelTexture(b,'TOUCH / PINCH TO CONTINUE');}}).set(els,{y:14}).to(els,{opacity:1,y:0,duration:1.3,stagger:.18,ease:'power2.out'});}
-function setChapter(n){chapter=(n+6)%6;elapsed=0;caption(chapter);transition?.kill();transition=gsap.timeline({defaults:{duration:4,ease:'sine.inOut'}});const tl=transition;
-if(chapter===0||chapter===1){tl.to(motion,{birth:0,ring:0,white:0,land:0,hero:1,title:chapter===0?.7:0},0);}
-if(chapter===2){tl.to(motion,{land:0,hero:.75,title:0,ring:0,white:0},0).to(motion,{birth:3/35,duration:3},1).to(motion,{birth:7/35,duration:3},5).to(motion,{birth:18/35,duration:5},9).to(motion,{birth:1,duration:5},15);}
-if(chapter===3){tl.to(motion,{birth:1,ring:1,land:0,hero:.5,title:0,duration:7},0).to(motion,{white:0,duration:9},3);}
-if(chapter===4){motion.lower=0;tl.to(motion,{birth:0,hero:0,title:0,duration:6},0).to(motion,{land:1,duration:9},3).to(motion,{lower:1,duration:8},14);}
-if(chapter===5){tl.to(motion,{land:0,birth:0,white:0,ring:0,duration:6},0).to(motion,{hero:1,title:1,duration:7},3);}
-gsap.to('header h1,header p',{opacity:chapter===0||chapter===5?1:.35,duration:2});document.querySelector('#begin').textContent=playing?'重新开始':'开始体验';document.querySelector('#next').disabled=true;gsap.delayedCall(2,()=>document.querySelector('#next').disabled=false);}
-let lastAdvance=-10;function advance(){if(reader.visible){if(clock.elapsedTime-lastAdvance<1.2)return;lastAdvance=clock.elapsedTime;readPage++;if(readPage>=reading.length){renderer.xr.getSession()?.end().then(()=>location.href='./project.html');return;}paintReader();return;}if(!hero||clock.elapsedTime-lastAdvance<2)return;lastAdvance=clock.elapsedTime;if(!playing){playing=true;total=0;score.currentTime=0;score.play().catch(()=>{});setChapter(1);}else if(chapter===5){playing=false;showAbout();}else setChapter(chapter+1);}
-function showAbout(){if(!renderer.xr.isPresenting){location.href='./project.html';return;}playing=false;gsap.to(score,{volume:0,duration:3});reader.visible=true;readPage=0;paintReader();}
-const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();let down;renderer.domElement.addEventListener('pointerdown',e=>down=[e.clientX,e.clientY]);renderer.domElement.addEventListener('pointerup',e=>{if(!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>8)return;pointer.set(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1);ray.setFromCamera(pointer,camera);if(ray.intersectObjects([hero,...stones.map(s=>s.obj)].filter(Boolean),true).length)advance();});
-document.querySelector('#begin').onclick=()=>{playing=false;resetView();score.volume=.3;advance();};document.querySelector('#next').onclick=advance;document.querySelector('#project').onclick=showAbout;document.querySelector('#close').onclick=()=>{document.querySelector('#about').style.display='none';};document.querySelector('#world').onclick=()=>{playing=false;setChapter(chapter===4?2:4);};document.querySelector('#fog').value=.06;document.querySelector('#fog').oninput=e=>scene.fog.density=+e.target.value;document.querySelector('#rough').value=.68;document.querySelector('#rough').oninput=e=>{for(const root of Object.values(roots))root.traverse(o=>{if(o.isMesh)for(const m of Array.isArray(o.material)?o.material:[o.material])m.roughness=+e.target.value;});};
-const hands=[];for(let i=0;i<2;i++){const c=renderer.xr.getController(i);dolly.add(c);c.addEventListener('selectstart',advance);const h=renderer.xr.getHand(i);dolly.add(h);hands.push(h);}
-renderer.xr.addEventListener('sessionstart',()=>{controls.enabled=false;camera.position.set(0,0,0);camera.quaternion.identity();});renderer.xr.addEventListener('sessionend',()=>{controls.enabled=true;resetView();});
-async function load(){try{for(const name of ['fragments','mountain']){const g=await loader.loadAsync(name==='fragments'?'./assets/fragments-capped-web.glb':'./assets/mountain-web.glb');roots[name]=g.scene;g.scene.visible=false;if(name==='fragments')g.scene.traverse(o=>{if(o.isMesh)o.material=Array.isArray(o.material)?o.material.map(m=>m.clone()):o.material.clone();});dress(g.scene);scene.add(g.scene);}roots.fragments.traverse(o=>{if(!o.isMesh)return;o.geometry.computeBoundingBox();const size=o.geometry.boundingBox.getSize(new THREE.Vector3());const max=Math.max(size.x,size.y,size.z);const i=stones.length;const a=i*2.39996;const spread=new THREE.Vector3(Math.cos(a)*(4+i%5),.8+(i%7)*.65,-5-Math.sin(a)*3-i%4);const q=new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.sin(i*1.7)*.35,i*2.39996,Math.cos(i*2.1)*.3)); // keep scan's original up direction; do not tumble its cut base toward viewer
-stones.push({obj:o,spread,max,q});o.position.copy(spread);o.scale.setScalar(.00001);});
-const src=stones.slice().sort((a,b)=>{const x=a.obj.geometry.boundingBox.getSize(new THREE.Vector3()),y=b.obj.geometry.boundingBox.getSize(new THREE.Vector3());return Math.min(y.x,y.y,y.z)/b.max-Math.min(x.x,x.y,x.z)/a.max;})[0];hero=src.obj.clone();hero.material=src.obj.material.clone();hero.material.userData={};dress(hero);try{const hd=await loader.loadAsync('./assets/hero-high.glb');let mesh;hd.scene.traverse(o=>{if(o.isMesh&&!mesh)mesh=o;});if(mesh){hero.geometry=mesh.geometry;hero.material=mesh.material;dress(hero);}}catch(e){console.warn('HD hero unavailable; using local fallback.');}hero.geometry=hero.geometry.clone();hero.geometry.center();hero.geometry.computeBoundingBox();const hdSize=hero.geometry.boundingBox.getSize(new THREE.Vector3());const hdMax=Math.max(hdSize.x,hdSize.y,hdSize.z);hero.scale.setScalar(.9/hdMax);hero.userData.sourceMax=hdMax;for(const m of materials(hero)){m.normalScale.setScalar(.85);m.roughness=.56;m.envMapIntensity=.4;};hero.quaternion.identity();scene.add(hero);
-roots.mountain.position.set(3,-.5,-10);roots.mountain.scale.setScalar(.25);roots.mountain.traverse(o=>{if(o.isMesh)o.material.normalScale.setScalar(.25);});for(let i=0;i<2;i++){const layer=roots.mountain.clone();layer.position.x+=(i?1:-1)*17;layer.position.z-=12;layer.scale.setScalar(.20);scene.add(layer);roots['ridge'+i]=layer;}const mat=roots.mountain.children.find(o=>o.isMesh)?.material.clone()||new THREE.MeshStandardMaterial({color:0x151515,roughness:.7});dress({traverse:fn=>fn({isMesh:true,material:mat})});apron=new THREE.Mesh(new THREE.PlaneGeometry(300,300,1,1),mat);apron.rotation.x=-Math.PI/2;apron.position.set(0,-.52,30);scene.add(apron);roots.fragments.visible=true;document.querySelector('#status').textContent='SHANHAI FUSHENG 2026 / SPATIAL PRELUDE';ready=true;setChapter(0);
-}catch(e){document.querySelector('#status').textContent='载入失败：'+e.message;console.error(e);}}
+function dress(root){root.traverse(o=>{if(!o.isMesh)return;for(const m of Array.isArray(o.material)?o.material:[o.material]){m.roughness=.68;m.metalness=0;m.envMapIntensity=.45;m.normalScale?.setScalar(.45);m.side=THREE.DoubleSide;m.userData.qiWhite={value:0};m.userData.qiFade={value:1};m.onBeforeCompile=s=>{s.uniforms.qiWhite=m.userData.qiWhite;s.uniforms.qiFade=m.userData.qiFade;s.vertexShader=s.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 shWorld;').replace('#include <worldpos_vertex>','#include <worldpos_vertex>\nshWorld=(modelMatrix*vec4(transformed,1.0)).xyz;');s.fragmentShader=s.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 shWorld;uniform float qiWhite;uniform float qiFade;').replace('#include <color_fragment>','#include <color_fragment>\ndiffuseColor.rgb=mix(diffuseColor.rgb*2.0,vec3(.9),qiWhite);').replace('#include <fog_fragment>','#include <fog_fragment>\n#ifdef USE_FOG\nfloat groundHaze=(1.0-exp(-length(shWorld-cameraPosition)*fogDensity*.3))*exp(-max(shWorld.y,0.0)*.08);gl_FragColor.rgb=mix(gl_FragColor.rgb,fogColor,clamp(groundHaze,0.0,.5));\n#endif\ngl_FragColor.rgb=mix(vec3(1.),gl_FragColor.rgb,qiFade);');};m.customProgramCacheKey=()=> 'qi-continuous-v4';}});}
+let ready=false, hero, apron, transition, playing=false, finished=false, chapter=0;
+let elapsed=0,total=0,startTime=0,alignPending=false,pendingXRStart=false;
+const stones=[],hands=[],controllers=[],pinches=[false,false];
+const motion={birth:0,ring:0,land:0,hero:1,title:.7,lower:0};
+const chapters=[
+ ['00 / 在场','山海浮生 III｜炁 QI','进入 VR 后自动播放，约 110 秒。捏合让石头回应，不会跳过剧情。'],
+ ['01 / 一炁','一石，一息','序列正在播放 · 捏合回应'],
+ ['02 / 分形','一炁生万物','序列正在播放 · 万象从雾中显现'],
+ ['03 / 相生','分形而不减其本','序列正在播放 · 形体缓缓汇聚'],
+ ['04 / 山海','生天生地','序列正在播放 · 山海展开'],
+ ['05 / 归一','合形而不增其源','序列正在播放 · 万象归一']
+];
+const score=new Audio('./assets/score.mp3');score.preload='none';score.volume=.3;
+const sound=document.createElement('button');sound.textContent='声音：开';document.querySelector('nav').append(sound);
+sound.onclick=()=>{score.muted=!score.muted;sound.textContent=score.muted?'声音：关':'声音：开';};
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(500,500),new THREE.ShaderMaterial({
+ vertexShader:'varying vec3 p;void main(){p=(modelMatrix*vec4(position,1.)).xyz;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+ fragmentShader:'varying vec3 p;void main(){float a=exp(-length(p.xz)*.035);gl_FragColor=vec4(vec3(1.-.065*a),1.);}'
+}));floor.rotation.x=-Math.PI/2;floor.position.y=-.55;experience.add(floor);
+function labelTexture(text,sub){
+ const c=document.createElement('canvas');c.width=2048;c.height=512;const x=c.getContext('2d');
+ x.fillStyle='#202020';x.textAlign='center';x.font='100px serif';x.fillText(text,1024,240);
+ x.font='36px Arial';x.fillText(sub,1024,345);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;
+}
+function replaceLabel(mesh,text,sub){mesh.material.map?.dispose();mesh.material.map=labelTexture(text,sub);mesh.material.needsUpdate=true;}
+const title=new THREE.Mesh(new THREE.PlaneGeometry(3.5,.875),new THREE.MeshBasicMaterial({map:labelTexture('山海浮生 III · 炁','SHANHAI FUSHENG / SPATIAL PRELUDE'),transparent:true,depthWrite:false}));
+title.position.set(0,2.7,-4);experience.add(title);
+const cue=new THREE.Mesh(new THREE.PlaneGeometry(2,.5),new THREE.MeshBasicMaterial({map:labelTexture('正在载入…','PLEASE WAIT'),transparent:true,depthWrite:false}));
+cue.position.set(0,.85,-3);experience.add(cue);
+const progressGroup=new THREE.Group();progressGroup.position.set(0,.49,-3);experience.add(progressGroup);
+progressGroup.add(new THREE.Mesh(new THREE.PlaneGeometry(1.4,.008),new THREE.MeshBasicMaterial({color:0xdddddd})));
+const progressFill=new THREE.Mesh(new THREE.PlaneGeometry(1.4,.012),new THREE.MeshBasicMaterial({color:0x555555}));progressFill.position.z=.002;progressGroup.add(progressFill);
+const response=new THREE.Mesh(new THREE.RingGeometry(.36,.37,64),new THREE.MeshBasicMaterial({color:0x777777,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false}));experience.add(response);
+let responseAge=10,lastFeedback=-10;
+// Three actual depth layers: white drift crosses distant silhouettes, without a screen-space post pass.
+const fogSheets=[];
+for(const [z,y]of [[-4,1],[-8,2],[-13,3]]){
+ const m=new THREE.ShaderMaterial({transparent:true,depthWrite:false,side:THREE.DoubleSide,
+ uniforms:{time:{value:0},amount:{value:1}},
+ vertexShader:'varying vec2 q;void main(){q=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+ fragmentShader:'varying vec2 q;uniform float time;uniform float amount;void main(){float w=sin(q.x*17.+time*.12+sin(q.y*13.))*sin(q.y*9.-time*.07);float band=exp(-pow((q.y-.36)*5.,2.));float a=(.08+.10*w)*band*amount;gl_FragColor=vec4(1.,1.,1.,max(0.,a));}'});
+ const mesh=new THREE.Mesh(new THREE.PlaneGeometry(36,12),m);mesh.position.set(0,y,z);experience.add(mesh);fogSheets.push(mesh);
+}
+function resetView(){if(renderer.xr.isPresenting)return;camera.position.set(0,1.65,1.5);controls.target.set(0,1.5,-3);controls.update();}
+controls.maxDistance=12;controls.minDistance=3;controls.maxPolarAngle=Math.PI*.51;resetView();
+function caption(n){
+ const[a,b,c]=chapters[n];document.querySelector('#chapter').textContent=a;document.querySelector('#name').textContent=b;document.querySelector('#line').textContent=c;
+ gsap.fromTo(['#chapter','#name','#line'],{opacity:0,y:10},{opacity:1,y:0,duration:1,stagger:.12,overwrite:true});
+ replaceLabel(cue,b,playing?'自动播放 · 捏合回应':'进入 VR 自动开始 / 点击开始');
+}
+function setChapter(n){
+ chapter=n;elapsed=0;caption(n);transition?.kill();transition=gsap.timeline({paused:true,defaults:{duration:4,ease:'sine.inOut'}});const tl=transition;
+ if(n===0||n===1)tl.to(motion,{birth:0,ring:0,land:0,hero:1,title:n===0?.7:0,lower:0},0);
+ if(n===2)tl.to(motion,{land:0,hero:.75,title:0,ring:0},0).to(motion,{birth:3/35,duration:3},0).to(motion,{birth:7/35,duration:3},4).to(motion,{birth:18/35,duration:5},8).to(motion,{birth:1,duration:5},14);
+ if(n===3)tl.to(motion,{birth:1,ring:1,land:0,hero:.5,title:0,duration:7},0);
+ if(n===4)tl.to(motion,{birth:0,hero:0,title:0,lower:0,duration:6},0).to(motion,{land:1,duration:9},2).to(motion,{lower:1,duration:8},15);
+ if(n===5)tl.to(motion,{land:0,birth:0,ring:0,duration:6},0).to(motion,{hero:1,title:1,duration:7},3);
+ document.querySelector('#begin').textContent=playing?'重新开始':'开始体验';
+}
+function begin(){
+ if(!ready){pendingXRStart=true;return;}
+ playing=true;finished=false;reader.visible=false;title.visible=true;cue.visible=true;progressGroup.visible=true;document.querySelector('#about').style.display='none';
+ startTime=performance.now()/1000;total=0;setChapter(1);score.currentTime=0;score.volume=.3;score.play().catch(()=>{});
+ document.querySelector('#status').textContent='正在自动播放 · 110 秒 · 无需连续点击';feedback();
+}
+function feedback(){
+ const now=performance.now()/1000;if(now-lastFeedback<.65)return;lastFeedback=now;responseAge=0;
+ if(!playing&&!finished){begin();return;}
+ replaceLabel(cue,chapters[chapter][1],'已回应 · 正在自动播放');
+ for(const source of renderer.xr.getSession()?.inputSources||[])source.gamepad?.hapticActuators?.[0]?.pulse?.(.18,80);
+}
+function select(){
+ if(reader.visible){const now=performance.now()/1000;if(now-lastFeedback<.8)return;lastFeedback=now;readPage++;if(readPage>=reading.length){readPage=0;}paintReader();return;}
+ if(finished){openReader();return;}
+ feedback();
+}
+function finish(){
+ playing=false;finished=true;total=LENGTH;gsap.to(score,{volume:0,duration:4});
+ replaceLabel(cue,'体验结束','捏合阅读作品与系列档案');document.querySelector('#status').textContent='体验结束 · 点击关于作品阅读专题';
+ document.querySelector('#line').textContent='体验结束。可重新播放，或阅读作品与系列档案。';
+}
+function previewNext(){
+ if(!playing){begin();return;}
+ const boundaries=[0,12,36,58,88];const next=Math.min(chapter+1,5);startTime=performance.now()/1000-boundaries[next-1];setChapter(next);
+}
+function showAbout(){if(renderer.xr.isPresenting)openReader();else location.href='./project.html';}
+const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();let down;
+renderer.domElement.addEventListener('pointerdown',e=>down=[e.clientX,e.clientY]);
+renderer.domElement.addEventListener('pointerup',e=>{
+ if(!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>8)return;
+ pointer.set(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1);ray.setFromCamera(pointer,camera);
+ if(hero&&ray.intersectObjects([hero,...stones.filter(s=>s.obj.visible).map(s=>s.obj)],true).length)select();
+});
+document.querySelector('#begin').onclick=()=>{resetView();begin();};
+document.querySelector('#next').onclick=previewNext;
+document.querySelector('#project').onclick=showAbout;
+document.querySelector('#close').onclick=()=>document.querySelector('#about').style.display='none';
+document.querySelector('#world').onclick=()=>{if(!playing)begin();startTime=performance.now()/1000-58;setChapter(4);};
+document.querySelector('#fog').value=.06;document.querySelector('#fog').oninput=e=>scene.fog.density=+e.target.value;
+document.querySelector('#rough').value=.58;document.querySelector('#rough').oninput=e=>{
+ for(const root of [hero,...Object.values(roots)].filter(Boolean))root.traverse(o=>{if(o.isMesh)for(const m of materials(o))m.roughness=+e.target.value;});
+};
+for(let i=0;i<2;i++){
+ const controller=renderer.xr.getController(i);dolly.add(controller);controller.addEventListener('selectend',select);controllers.push(controller);
+ const hand=renderer.xr.getHand(i);dolly.add(hand);hands.push(hand);
+}
+renderer.xr.addEventListener('sessionstart',()=>{
+ controls.enabled=false;camera.position.set(0,0,0);camera.quaternion.identity();alignPending=true;pinches.fill(false);pendingXRStart=true;if(ready){begin();pendingXRStart=false;}
+});
+renderer.xr.addEventListener('sessionend',()=>{
+ controls.enabled=true;experience.position.set(0,0,0);experience.quaternion.identity();reader.visible=false;title.visible=true;cue.visible=true;resetView();
+});
+function alignExperience(){
+ const xrCam=renderer.xr.getCamera();const p=xrCam.getWorldPosition(new THREE.Vector3());const f=xrCam.getWorldDirection(new THREE.Vector3());
+ experience.position.set(p.x,p.y-1.65,p.z);experience.rotation.set(0,Math.atan2(-f.x,-f.z),0);alignPending=false;
+}
 function materials(o){return Array.isArray(o.material)?o.material:[o.material];}
-function animate(dt,t){if(!ready||!hero)return;if(reader.visible){hero.visible=false;title.visible=false;cue.visible=false;for(const root of Object.values(roots))root.visible=false;if(apron)apron.visible=false;return;}if(playing){elapsed+=dt;total+=dt;if(elapsed>durations[chapter]){if(chapter<5)setChapter(chapter+1);else showAbout();}}document.querySelector('#bar').style.width=`${Math.min(total/110,1)*100}%`;document.querySelector('#time').textContent=playing?`${Math.floor(total)} / 110 s`:'';title.material.opacity=motion.title;title.position.y=3.5+Math.sin(t*.25)*.035;cue.material.opacity=motion.hero*.55;
-hero.visible=motion.hero>.005;hero.position.set(0,(renderer.xr.isPresenting?1.3:1.9)+Math.sin(t*.75)*.055,renderer.xr.isPresenting?-.85:5);hero.rotation.set(.12+Math.sin(t*.11)*.09,t*.045,.08+Math.sin(t*.13)*.06);hero.scale.setScalar((1.25/hero.userData.sourceMax)*Math.max(.001,motion.hero));for(const m of materials(hero)){m.userData.qiWhite.value=0;m.userData.qiFade.value=motion.hero;}
-floor.visible=motion.land<.01;if(apron){apron.visible=motion.land>.001;apron.position.y=-.52-motion.lower*5.5;apron.material.userData.qiFade.value=motion.land;}for(const n of ['mountain','ridge0','ridge1']){const root=roots[n];root.position.y=-.5-motion.lower*5.5;root.visible=motion.land>.001;root.traverse(o=>{if(o.isMesh)for(const m of materials(o))m.userData.qiFade.value=motion.land;});}
-stones.forEach((s,i)=>{const a=i/stones.length*Math.PI*1.8+t*.025;const ring=new THREE.Vector3(Math.cos(a)*3.2,2.3+Math.sin(a)*1.5,-4+Math.sin(a*2)*.25);const target=s.spread.clone().lerp(ring,motion.ring);const birth=THREE.MathUtils.smoothstep(motion.birth*37-i,0,2);s.obj.position.copy(target);s.obj.position.x+=Math.sin(t*.12+i*1.9)*.22;s.obj.position.y+=Math.sin(t*.24+i)*.16;s.obj.position.z+=Math.cos(t*.16+i)*.18;const radius=(.55+(i%5)*.22)/s.max;s.obj.scale.setScalar(radius*(1-.25*motion.ring));s.obj.visible=birth>.002;s.obj.quaternion.copy(s.q);s.obj.rotateY(t*(.025+(i%4)*.009));s.obj.rotateX(Math.sin(t*.17+i)*.12);s.obj.rotateZ(Math.sin(t*.13+i)*.09);for(const m of materials(s.obj)){m.userData.qiWhite.value=0;m.userData.qiFade.value=birth;}});
-if(renderer.xr.isPresenting&&t-lastAdvance>2){for(const h of hands){const tip=h.joints?.['index-finger-tip'];if(!tip?.visible)continue;const p=tip.getWorldPosition(new THREE.Vector3());const thumb=h.joints?.['thumb-tip'];if(p.distanceTo(hero.position)<.4||(thumb?.visible&&p.distanceTo(thumb.getWorldPosition(new THREE.Vector3()))<.025)){advance();break;}}}}
-
-const reader=new THREE.Mesh(new THREE.PlaneGeometry(2.45,1.8),new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide}));reader.position.set(0,1.6,-2.2);reader.visible=false;scene.add(reader);let readPage=0;
-const reading=[['山海浮生 III｜炁 QI','程雨阳独立编创的沉浸式实验环境肢体戏剧。身体、空间、影像、声音，是同一“炁”的分形显现。技术作为感知的延伸，连接生命经验与精神场域。'],['一炁生万物','分形而不减其本，合形而不增其源。这个空间序章从一石开始，以聚散关系回应“炁”的流动宇宙观。'],['系列档案 · 芭莎艺术','2025年11月刊：《山海浮生｜八荒祭》——身体、空间与生命议题的结构化表达。此为系列前作报道。程雨阳：“我希望空间本身成为叙事。”'],['在现场，重新相遇','10月15日 17:00—17:30。交通银行前滩31演艺中心·大剧场。出品：旁观实验剧场 SET。再次捏合，退出沉浸模式，阅读完整专题与杂志原页。']];
-function paintReader(){const c=document.createElement('canvas');c.width=2048;c.height=1504;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.fillStyle='#111';x.font='bold 42px sans-serif';x.fillText('SHANHAI FUSHENG / EDITORIAL',150,170);x.font='bold 92px sans-serif';x.fillText(reading[readPage][0],150,370);x.font='bold 64px sans-serif';let line='',y=560;for(const ch of reading[readPage][1]){if(x.measureText(line+ch).width>1700){x.fillText(line,150,y);line=ch;y+=112;}else line+=ch;}x.fillText(line,150,y);x.font='bold 42px sans-serif';x.fillText(`${readPage+1} / 4 · 捏合或扳机，翻至下一页`,150,1330);reader.material.map?.dispose();reader.material.map=new THREE.CanvasTexture(c);reader.material.map.colorSpace=THREE.SRGBColorSpace;reader.material.needsUpdate=true;}
-
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});renderer.setAnimationLoop(()=>{const dt=Math.min(clock.getDelta(),.1);if(!renderer.xr.isPresenting)controls.update();animate(dt,clock.elapsedTime);renderer.render(scene,camera);});await load();window.shanhai={scene,renderer,roots};
+async function load(){
+ document.querySelector('#begin').disabled=true;document.querySelector('#next').disabled=true;
+ try{
+  for(const name of ['fragments','mountain']){
+   const g=await loader.loadAsync(name==='fragments'?'./assets/fragments-capped-web.glb':'./assets/mountain-web.glb');roots[name]=g.scene;g.scene.visible=false;
+   if(name==='fragments')g.scene.traverse(o=>{if(o.isMesh)o.material=Array.isArray(o.material)?o.material.map(m=>m.clone()):o.material.clone();});dress(g.scene);experience.add(g.scene);
+  }
+  roots.fragments.traverse(o=>{
+   if(!o.isMesh)return;o.geometry.computeBoundingBox();const size=o.geometry.boundingBox.getSize(new THREE.Vector3());const max=Math.max(size.x,size.y,size.z);const i=stones.length,a=i*2.39996;
+   const spread=new THREE.Vector3(Math.cos(a)*(4+i%5),.8+(i%7)*.65,-5-Math.sin(a)*3-i%4);
+   const q=new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.sin(i*1.7)*.35,i*2.39996,Math.cos(i*2.1)*.3));
+   stones.push({obj:o,spread,max,q});o.visible=false;
+  });
+  if(!stones.length)throw new Error('Rock composition contains no meshes');
+  const src=stones[0].obj;hero=src.clone();hero.material=src.material.clone();hero.material.userData={};
+  try{const hd=await loader.loadAsync('./assets/hero-high.glb?rev=2');let mesh;hd.scene.traverse(o=>{if(o.isMesh&&!mesh)mesh=o;});if(mesh){hero.geometry=mesh.geometry;hero.material=mesh.material;}}
+  catch(e){console.warn('HD hero unavailable; using composition fallback.');}
+  hero.geometry=hero.geometry.clone();hero.geometry.center();hero.geometry.computeBoundingBox();
+  const size=hero.geometry.boundingBox.getSize(new THREE.Vector3());hero.userData.sourceMax=Math.max(size.x,size.y,size.z);dress(hero);
+  for(const m of materials(hero)){m.normalScale.setScalar(1);m.roughness=.58;m.envMapIntensity=.6;}
+  experience.add(hero);
+  roots.mountain.position.set(3,-.5,-10);roots.mountain.scale.setScalar(.25);roots.mountain.traverse(o=>{if(o.isMesh)o.material.normalScale.setScalar(.25);});
+  for(let i=0;i<2;i++){const layer=roots.mountain.clone();layer.position.x+=(i?1:-1)*17;layer.position.z-=12;layer.scale.setScalar(.2);experience.add(layer);roots['ridge'+i]=layer;}
+  const sourceMat=roots.mountain.children.find(o=>o.isMesh)?.material;
+  const mat=sourceMat?sourceMat.clone():new THREE.MeshStandardMaterial({color:0x151515,roughness:.7});dress({traverse:fn=>fn({isMesh:true,material:mat})});
+  apron=new THREE.Mesh(new THREE.PlaneGeometry(300,300),mat);apron.rotation.x=-Math.PI/2;apron.position.set(0,-.52,30);experience.add(apron);
+  roots.fragments.visible=true;ready=true;document.querySelector('#begin').disabled=false;document.querySelector('#next').disabled=false;
+  document.querySelector('#status').textContent='XR SCALE & SEQUENCE · REVISION 02';setChapter(0);
+  if(pendingXRStart){begin();pendingXRStart=false;}
+ }catch(e){document.querySelector('#status').textContent='载入失败：'+e.message;console.error(e);replaceLabel(cue,'载入失败','请刷新网页重试');}
+}
+const reader=new THREE.Mesh(new THREE.PlaneGeometry(2.45,1.8),new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide}));reader.position.set(0,1.6,-2.8);reader.visible=false;experience.add(reader);
+let readPage=0;
+const reading=[
+ ['山海浮生 III｜炁 QI','程雨阳独立编创的沉浸式实验环境肢体戏剧。身体、空间、影像、声音，是同一“炁”的分形显现。技术作为感知的延伸，连接生命经验与精神场域。','poster-qi.png'],
+ ['一炁生万物','分形而不减其本，合形而不增其源。这个空间序章从一石开始，以聚散关系回应“炁”的流动宇宙观。','rehearsal-02.png'],
+ ['系列档案 · 芭莎艺术','2025年11月刊：《山海浮生｜八荒祭》——身体、空间与生命议题的结构化表达。此为系列前作报道。程雨阳：“我希望空间本身成为叙事。”','press-portrait.png'],
+ ['演出信息','导演：程雨阳。出品：旁观实验剧场 SET。10月15日 17:00—17:30，交通银行前滩31演艺中心·大剧场。退出 VR 后，可在作品专题中阅读杂志原页。','poster-stage.png']
+];
+const pageImages=reading.map(p=>{const image=new Image();image.src='./assets/editorial/'+p[2];image.onload=()=>{if(reader.visible)paintReader();};return image;});
+function openReader(){playing=false;reader.visible=true;readPage=0;gsap.to(score,{volume:0,duration:3});paintReader();}
+function paintReader(){
+ const c=document.createElement('canvas');c.width=2048;c.height=1504;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.fillStyle='#111';
+ x.font='bold 24px sans-serif';x.fillText('SHANHAI FUSHENG / EDITORIAL',130,140);
+ x.font='bold 32px sans-serif';x.fillText(reading[readPage][0],130,310);
+ x.font='500 22px sans-serif';let line='',y=440;for(const ch of reading[readPage][1]){if(x.measureText(line+ch).width>760){x.fillText(line,130,y);line=ch;y+=43;}else line+=ch;}x.fillText(line,130,y);
+ const image=pageImages[readPage];if(image.complete&&image.naturalWidth){const scale=Math.min(860/image.naturalWidth,1060/image.naturalHeight);const w=image.naturalWidth*scale,h=image.naturalHeight*scale;x.drawImage(image,1050+(860-w)/2,250+(1060-h)/2,w,h);}
+ x.fillStyle='#111';x.font='24px sans-serif';x.fillText(`${readPage+1} / 4 · 捏合或扳机翻页 · 系统按钮退出 VR`,130,1370);
+ reader.material.map?.dispose();reader.material.map=new THREE.CanvasTexture(c);reader.material.map.colorSpace=THREE.SRGBColorSpace;reader.material.needsUpdate=true;
+}
+let lastCueSecond=-1;
+function animate(dt,t){
+ if(alignPending&&renderer.xr.isPresenting)alignExperience();
+ if(!ready||!hero)return;
+ if(reader.visible){hero.visible=false;title.visible=false;cue.visible=false;progressGroup.visible=false;response.material.opacity=0;for(const root of Object.values(roots))root.visible=false;if(apron)apron.visible=false;for(const sheet of fogSheets)sheet.visible=false;return;}
+ if(playing){
+  total=Math.max(0,performance.now()/1000-startTime);const phase=phaseAt(total);if(phase.chapter!==chapter)setChapter(phase.chapter);elapsed=phase.elapsed;transition?.time(elapsed,false);
+  if(phase.done)finish();
+ }else if(!finished){transition?.time(Math.min(4,t),false);}
+ const second=Math.floor(total);
+ if(playing&&second!==lastCueSecond&&responseAge>2){replaceLabel(cue,chapters[chapter][1],`自动播放 ${second} / ${LENGTH} 秒 · 捏合回应`);lastCueSecond=second;}
+ document.querySelector('#bar').style.width=`${Math.min(total/LENGTH,1)*100}%`;document.querySelector('#time').textContent=playing?`${second} / ${LENGTH} s`:'';
+ progressFill.scale.x=Math.max(.001,total/LENGTH);progressFill.position.x=-(1-total/LENGTH)*.7;
+ title.visible=true;cue.visible=true;title.material.opacity=motion.title;cue.material.opacity=.9;
+ const size=renderer.xr.isPresenting?XR_HERO.width:.95;
+ hero.visible=motion.hero>.005;hero.position.set(0,XR_HERO.height+Math.sin(t*.75)*.035,-XR_HERO.distance);
+ hero.rotation.set(.14+Math.sin(t*.11)*.06,t*.025,.06);hero.scale.setScalar(size/hero.userData.sourceMax);
+ for(const m of materials(hero)){m.userData.qiFade.value=motion.hero;m.userData.qiWhite.value=0;}
+ responseAge+=dt;response.position.copy(hero.position);response.position.z+=.1;response.scale.setScalar(1+Math.min(responseAge,2)*.7);response.material.opacity=responseAge<2?(1-responseAge/2)*.6:0;
+ floor.visible=motion.land<.01;apron.visible=motion.land>.001;apron.position.y=-.52-motion.lower*5.5;apron.material.userData.qiFade.value=motion.land;
+ for(const n of ['mountain','ridge0','ridge1']){const root=roots[n];root.position.y=-.5-motion.lower*5.5;root.visible=motion.land>.001;root.traverse(o=>{if(o.isMesh)for(const m of materials(o))m.userData.qiFade.value=motion.land;});}
+ roots.fragments.visible=true;
+ stones.forEach((s,i)=>{
+  const a=i/stones.length*Math.PI*1.8+t*.025;const ring=new THREE.Vector3(Math.cos(a)*3.2,2+Math.sin(a)*1.3,-4+Math.sin(a*2)*.25);const target=s.spread.clone().lerp(ring,motion.ring);
+  const birth=THREE.MathUtils.smoothstep(motion.birth*37-i,0,2);s.obj.visible=birth>.002;s.obj.position.copy(target);s.obj.position.x+=Math.sin(t*.12+i*1.9)*.22;s.obj.position.y+=Math.sin(t*.24+i)*.12;
+  s.obj.scale.setScalar((.55+(i%5)*.22)/s.max*(1-.25*motion.ring));s.obj.quaternion.copy(s.q);s.obj.rotateY(t*(.025+i%4*.009));s.obj.rotateX(Math.sin(t*.17+i)*.12);
+  for(const m of materials(s.obj)){m.userData.qiFade.value=birth;m.userData.qiWhite.value=0;}
+ });
+ for(const sheet of fogSheets){sheet.visible=true;sheet.material.uniforms.time.value=t;sheet.material.uniforms.amount.value=scene.fog.density/.06;}
+ // Raw joint pinch fallback has release hysteresis. Controller/select events and fallback share one feedback debounce.
+ if(renderer.xr.isPresenting)hands.forEach((h,i)=>{
+  const tip=h.joints?.['index-finger-tip'],thumb=h.joints?.['thumb-tip'];if(!tip?.visible||!thumb?.visible){pinches[i]=false;return;}
+  const p=tip.getWorldPosition(new THREE.Vector3()),q=thumb.getWorldPosition(new THREE.Vector3());const edge=pinchEdge(pinches[i],p.distanceTo(q));pinches[i]=edge.held;if(edge.released)select();
+ });
+}
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+let previous=performance.now()/1000;
+renderer.setAnimationLoop(()=>{const now=performance.now()/1000,dt=Math.min(now-previous,.1);previous=now;if(!renderer.xr.isPresenting)controls.update();animate(dt,now);renderer.render(scene,camera);});
+await load();window.shanhai={scene,renderer,roots,experience,hero,revision:2,status:()=>({ready,playing,chapter,total,reader:reader.visible,readPage,images:pageImages.map(i=>i.complete&&i.naturalWidth>0),heroDistance:hero?.getWorldPosition(new THREE.Vector3()).distanceTo(renderer.xr.isPresenting?renderer.xr.getCamera().getWorldPosition(new THREE.Vector3()):camera.position),heroSize:hero?new THREE.Box3().setFromObject(hero).getSize(new THREE.Vector3()).toArray():null,visibleStones:stones.filter(s=>s.obj.visible).length})};
