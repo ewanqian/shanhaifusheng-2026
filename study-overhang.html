@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>山海浮生 III · Spatial Study / Under the Mountain</title>
+<style>
+:root{--ink:#111;--muted:#777;--hair:rgba(0,0,0,.16)}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#fff;color:var(--ink);font-family:Arial,"Microsoft Yahei",sans-serif}canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+#hud{position:fixed;inset:0;pointer-events:none;z-index:5}
+.brand{position:absolute;left:42px;top:34px;display:grid;gap:8px}.brand small,.study{font-size:10px;letter-spacing:.28em;color:#777}.brand h1{margin:0;font:400 clamp(30px,4vw,62px)/1.05 Georgia,"Times New Roman",serif;letter-spacing:.14em}.brand p{margin:0;font-size:10px;letter-spacing:.31em;color:#888}
+.study{position:absolute;right:42px;top:38px;text-align:right}.study b{display:block;margin-top:8px;color:#222;font-weight:500;letter-spacing:.16em}
+.copy{position:absolute;left:42px;bottom:58px;max-width:min(560px,68vw)}.kicker{font-size:10px;letter-spacing:.3em;color:#777}.copy h2{margin:12px 0 8px;font:400 clamp(28px,4vw,56px)/1.08 Georgia,"Times New Roman",serif;letter-spacing:.06em}.copy p{margin:0;max-width:460px;font-size:12px;line-height:1.8;color:#666;letter-spacing:.06em}.copy .note{margin-top:12px;font-size:9px;letter-spacing:.18em;color:#999}
+.controls{pointer-events:auto;position:absolute;right:42px;bottom:54px;display:flex;gap:8px;align-items:center}.controls button{border:1px solid #aaa;background:rgba(255,255,255,.84);backdrop-filter:blur(12px);padding:11px 15px;color:#222;font-size:10px;letter-spacing:.16em;cursor:pointer}.controls button:hover{background:#111;color:#fff;border-color:#111}
+#VRButton{position:fixed!important;right:42px!important;bottom:108px!important;left:auto!important;width:auto!important;min-width:132px!important;border:1px solid #aaa!important;border-radius:0!important;background:rgba(255,255,255,.84)!important;color:#222!important;font:10px Arial!important;letter-spacing:.14em!important;padding:11px 15px!important;z-index:8!important}
+#progress{position:absolute;left:42px;right:42px;bottom:34px;height:1px;background:rgba(0,0,0,.12)}#bar{height:1px;width:0;background:#111;transition:width .08s linear}.phaseDots{position:absolute;left:42px;right:42px;bottom:23px;display:flex;justify-content:space-between;color:#999;font-size:8px;letter-spacing:.16em}
+#loading{position:fixed;inset:0;z-index:12;display:grid;place-items:center;background:#fff;transition:opacity .8s ease}.loadbox{width:min(420px,70vw)}.loadtop{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.22em;color:#666}.loadline{margin-top:14px;height:1px;background:#ddd}.loadfill{height:1px;width:0;background:#111;transition:width .2s}.loadnote{margin-top:14px;font-size:9px;letter-spacing:.16em;color:#aaa}
+#veil{position:fixed;inset:0;z-index:4;pointer-events:none;background:#fff;opacity:0}
+@media(max-width:720px){.brand{left:22px;top:24px}.study{right:22px;top:26px}.copy{left:22px;bottom:110px;max-width:76vw}.controls{right:22px;bottom:54px}#progress{left:22px;right:22px}.phaseDots{left:22px;right:22px}.study span{display:none}#VRButton{right:22px!important;bottom:106px!important}.brand h1{font-size:34px}}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
+</head>
+<body>
+<div id="loading"><div class="loadbox"><div class="loadtop"><span>SPATIAL STUDY / LOADING</span><span id="loadPct">0%</span></div><div class="loadline"><div class="loadfill" id="loadFill"></div></div><div class="loadnote" id="loadNote">preparing black mineral field</div></div></div>
+<div id="veil"></div>
+<div id="hud">
+  <div class="brand"><small>SET PRODUCTION / XR DIGITAL THEATRE</small><h1>山海浮生 III</h1><p>炁 QI · SPATIAL PRELUDE</p></div>
+  <div class="study"><span>SIDE ROUTE / MEMORY TEST</span><b id="studyId">STUDY 01 · UNDER THE MOUNTAIN</b></div>
+  <div class="copy"><div class="kicker" id="kicker">00 / VOID</div><h2 id="headline">白场 · 一石</h2><p id="desc">不解释世界。先让空间保持安静，然后只用尺度改变一次现实感。</p><div class="note">FIXED VIEWER · WORLD MOTION ONLY · 48 SEC LOOP</div></div>
+  <div class="controls"><button id="play">播放</button><button id="restart">重来</button></div>
+  <div id="progress"><div id="bar"></div></div>
+  <div class="phaseDots"><span>VOID</span><span>THRESHOLD</span><span>OVERHANG</span><span>HOLD</span><span>RETURN</span></div>
+</div>
+<script type="module" src="./study-overhang.js"></script>
+</body>
+</html>
