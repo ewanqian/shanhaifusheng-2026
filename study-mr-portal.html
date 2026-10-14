@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>山海浮生 III · Spatial Study 02 / MR Portal</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#d6d6d6;color:#111;font-family:Arial,"Microsoft Yahei",sans-serif}canvas{display:block;position:fixed;inset:0}
+#ui{position:fixed;inset:0;z-index:10;pointer-events:none}.brand{position:absolute;left:32px;top:28px}.brand small{font-size:9px;letter-spacing:.28em}.brand h1{font:400 clamp(24px,3vw,46px)/1 Georgia,serif;letter-spacing:.12em;margin:12px 0 8px}.brand p{margin:0;font-size:9px;letter-spacing:.24em}
+.note{position:absolute;left:32px;bottom:32px;max-width:520px;font-size:10px;line-height:1.8;letter-spacing:.08em}.note b{display:block;font-size:12px;letter-spacing:.14em;margin-bottom:6px}.actions{position:absolute;right:32px;bottom:32px;display:flex;gap:8px;pointer-events:auto}.actions button{border:1px solid #111;background:#fff;color:#111;padding:11px 15px;font-size:10px;letter-spacing:.15em;cursor:pointer}.actions button:hover{background:#111;color:#fff}
+#status{position:absolute;right:32px;top:30px;font-size:9px;letter-spacing:.16em;text-align:right}.rule{position:absolute;left:32px;right:32px;bottom:20px;height:1px;background:#111}.bar{height:3px;background:#111;width:0;position:absolute;left:32px;bottom:19px}
+#ARButton{right:32px!important;bottom:82px!important;left:auto!important;border:1px solid #111!important;border-radius:0!important;background:#fff!important;color:#111!important;font:10px Arial!important;letter-spacing:.15em!important;padding:11px 15px!important;min-width:126px!important;width:auto!important;z-index:20!important}
+@media(max-width:700px){.brand{left:20px;top:20px}.note{left:20px;bottom:88px;max-width:72vw}.actions{right:20px;bottom:28px}.rule{left:20px;right:20px}.bar{left:20px}#status{right:20px;top:22px}.brand h1{font-size:28px}#ARButton{right:20px!important;bottom:76px!important}}
+</style>
+</head>
+<body>
+<div id="ui">
+  <div class="brand"><small>SPATIAL STUDY 02 / MR PROTOTYPE</small><h1>山海浮生 III</h1><p>UNDER THE MOUNTAIN · HARD PORTAL STUDY</p></div>
+  <div id="status">LOADING ASSETS</div>
+  <div class="note"><b>今晚只验证一个记忆点</b>现实空间 → 一块黑石 → 硬边圆形入口 → 石块越界进入现实 → 巨大山体压到头顶 → 白场完全包裹 → 再退回现实。没有半透明渐变，没有相机升降。</div>
+  <div class="actions"><button id="start">桌面预演</button><button id="climax">直接看高潮</button><button id="replay">重播</button></div>
+  <div class="rule"></div><div class="bar" id="bar"></div>
+</div>
+<script type="module" src="./study-mr-portal.js?v=1"></script>
+</body>
+</html>
