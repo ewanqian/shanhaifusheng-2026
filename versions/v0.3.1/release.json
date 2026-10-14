@@ -1,0 +1,15 @@
+{
+  "version": "0.3.1",
+  "fallback": "../v0.3.0/",
+  "older_fallback": "../../",
+  "changes": [
+    "double-sided mountain with corrected winding",
+    "loading progress",
+    "in-world replay/read/exit",
+    "three crossfaded music loops",
+    "manual offline preparation"
+  ],
+  "headset_verified": false,
+  "music_loops_ready": true,
+  "music_artist_reviewed": false
+}
